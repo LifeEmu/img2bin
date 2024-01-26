@@ -20,10 +20,15 @@ Extracts binary data from photos of calculator LCDs.
 	* Check the transformation result in another window;
 	* If the result matches what you see in the photo, follow the tips in the console.
 
-4. Now you should get a file named `out.bin` in the directory, containing `width*height/8` bytes of data extracted from the LCD picture.
+4. (New) Another 2 windows now appears, letting you to correct the transformation result manually.
+	* Drag the trackbar to adjust the transparency of conversion result.
+	* Click on a pixel to flip its color.
+	* Follow the instruction in console to proceed.
+
+5. Now you should get a file named `out.bin` in the directory, containing `width*height/8` bytes of data extracted from the LCD picture.
 	* If you chose to save the result, it will **OVERWRITE** the existing file! I hope you didn't store your bitcoin wallet in a file named `out.bin`.
 
 ## Notes
-* This piece of code runs okay with Windows 10, Python 3.8.9 and OpenCV for Python 4.7.0. I didn't test it on any other system so I don't know if it works unmodified with other configurations.
+* This piece of code runs okay with Windows 10, Python 3.8.9 and OpenCV 4.7.0 for Python. I didn't test it on any other system so I don't know if it works unmodified with other configurations.
 * I don't know much Python/DSP/OpenCV things, most of the code in the file are copied from the Internet.
 * No warranty of any kind is provided(despite it doesn't mess with the OS), use this at your own risk.

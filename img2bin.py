@@ -1,16 +1,20 @@
-from math import *
 # math functions
-import numpy as np
+from math import *
+from tkinter.tix import WINDOW
 # numpy
-import cv2 as cv
+import numpy as np
 # OpenCV
-import sys
+import cv2 as cv
 # command line arguments
+import sys
 
+# set output binary file name here
 OUTPUT_FILENAME = "out.bin"
 
+# Global variable definitions
 WINDOW_NAME = "Click to set the corners"
 DISPLAY_WINDOW_NAME = "Transformation result"
+PARAMETER_WINDOW_NAME = "Parameters"
 MouseX, MouseY = 0, 0
 IsCoordValid = False
 SkipSave = False
@@ -52,10 +56,18 @@ def refreshImage(pos):
 	cv.imshow(DISPLAY_WINDOW_NAME, imgCopy)
 
 
+# Transparency callback function
+def blendImages(pos):
+	overlayImg = cv.resize(ConvertedImg, clipSize, interpolation= cv.INTER_NEAREST)
+	alpha = pos / 100
+	result = cv.addWeighted(overlayImg, alpha, clippedImg, 1.0 - alpha, 0.0)
+	cv.imshow(DISPLAY_WINDOW_NAME, result)
+
+
 # return a valid size for convolution operations
-def adjustSize(size, min):
-	if size < min:
-		return min | 1
+def adjustSize(size, _min):
+	if size < _min:
+		return _min | 1
 	return size | 1
 
 # Calculate Euclidian distance of 2 points
@@ -74,6 +86,9 @@ def destMatrix(dim):
 	width, height = dim
 	return np.float32([(0, 0), (width, 0), (0, height), (width, height)])
 
+
+# ================
+# Code starts here
 
 if len(sys.argv) < 4:
 	print("Usage: {} <imgName> <pixel per row> <pixle>\n".format(sys.argv[0]))
@@ -127,7 +142,7 @@ while True:
 
 	if index > 0:
 		for cur in range(0, index):
-			cv.line(imgCopy, Corners[cur], Corners[(cur + 1) % 4], (15, 63, 15), 1)
+			cv.line(imgCopy, Corners[cur], Corners[(cur + 1) % 4], (15, 63, 15), 3)
 	cv.imshow(WINDOW_NAME, imgCopy)
 
 	print("Point number = {}\nCorners = {}".format(index, Corners))
@@ -139,16 +154,18 @@ while True:
 # Swap the points
 Corners[2], Corners[3] = Corners[3], Corners[2]
 
+clipSize = calcCorners(Corners)
 
 # Adjust for perspective
-transformMatrix = cv.getPerspectiveTransform(np.float32(Corners), destMatrix(calcCorners(Corners)))
-Img = cv.warpPerspective(Img, transformMatrix, calcCorners(Corners))
+transformMatrix = cv.getPerspectiveTransform(np.float32(Corners), destMatrix(clipSize))
+Img = cv.warpPerspective(Img, transformMatrix, clipSize)
 
-print("Size = {}".format(calcCorners(Corners)))
+clippedImg = np.copy(Img)	# make a copy of clipped image for later use
+
+print("Size = {}".format(clipSize))
 
 
-PARAMETER_WINDOW_NAME = "Parameters"
-# create window for parameters
+# Create windows for parameters
 cv.namedWindow(PARAMETER_WINDOW_NAME)
 cv.createTrackbar("blockSize", PARAMETER_WINDOW_NAME, 7, 63, refreshImage)
 cv.createTrackbar("Constant", PARAMETER_WINDOW_NAME, 7, 63, refreshImage)
@@ -169,24 +186,49 @@ cv.destroyWindow(PARAMETER_WINDOW_NAME)
 
 # 9, 11 works well with screens with large portions of white areas
 # 7, 7 works well with screens with little white blocks
-Img = cv.adaptiveThreshold(Img, 255, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY, G_BlockSize, G_Constant)
+ConvertedImg = cv.adaptiveThreshold(Img, 255, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY, G_BlockSize, G_Constant)
 #retVal, Img = cv.threshold(Img, 0, 255, cv.THRESH_BINARY | cv.THRESH_OTSU)
 
 
 # Eliminate the black dots
 Kernel = np.ones((M_KernelSize, M_KernelSize), dtype= np.uint8)
 #Kernel = cv.getStructuringElement(cv.MORPH_CROSS, (M_KernelSize, M_KernelSize))
-Img = cv.morphologyEx(Img, cv.MORPH_CLOSE, Kernel)
+ConvertedImg = cv.morphologyEx(ConvertedImg, cv.MORPH_CLOSE, Kernel)
 
 
 # Resize the picture
-Img = cv.resize(Img, (1 * PixelPerRow, 1 * PixelPerCol), interpolation= cv.INTER_CUBIC)
-retVal, Img = cv.threshold(Img, 192, 255, cv.THRESH_BINARY)
+ConvertedImg = cv.resize(ConvertedImg, (1 * PixelPerRow, 1 * PixelPerCol), interpolation= cv.INTER_CUBIC)
+retVal, ConvertedImg = cv.threshold(ConvertedImg, 192, 255, cv.THRESH_BINARY)
 
 
 # Display the final outcome
-imgCopy = cv.resize(Img, (4 * PixelPerRow, 4 * PixelPerCol), interpolation= cv.INTER_NEAREST)
+imgCopy = cv.resize(ConvertedImg, (4 * PixelPerRow, 4 * PixelPerCol), interpolation= cv.INTER_NEAREST)
 cv.imshow(DISPLAY_WINDOW_NAME, imgCopy)
+
+
+# To-do: add manual correction
+cv.destroyWindow(WINDOW_NAME)
+cv.namedWindow(DISPLAY_WINDOW_NAME, cv.WINDOW_AUTOSIZE)
+cv.imshow(DISPLAY_WINDOW_NAME, imgCopy)
+cv.setMouseCallback(DISPLAY_WINDOW_NAME, recordPoint)
+cv.namedWindow(PARAMETER_WINDOW_NAME)
+cv.createTrackbar("Transparency", PARAMETER_WINDOW_NAME, 50, 100, blendImages)
+
+print("""
+Manual pixel correction:
+Click on pixels to flip it,
+'Y' to continue.
+""")
+key = -1
+while key != ord('y'):
+	while (key == -1) and (IsCoordValid == False):
+		key = cv.waitKey(100)
+
+	if IsCoordValid == True:
+		# To-do: flip pixel
+		ConvertedImg[int(MouseY / clipSize[1] * PixelPerCol), int(MouseX / clipSize[0] * PixelPerRow)] ^= 0xFF
+		blendImages(cv.getTrackbarPos("Transparency", PARAMETER_WINDOW_NAME))
+		IsCoordValid = False
 
 
 # convert to binary data
@@ -195,7 +237,7 @@ for row in range(0, PixelPerCol):
 	for offset in range(0, PixelPerRow, 8):	# assume 1BPP
 		byte = 0
 		for bit in range(0, 8):
-			byte = (byte << 1) | ((Img.item(row, offset + bit) & 1) ^ 1)
+			byte = (byte << 1) | ((ConvertedImg.item(row, offset + bit) & 1) ^ 1)
 		print(" {:02x}".format(byte), end='')
 		BinData.append(byte)
 	print("")
