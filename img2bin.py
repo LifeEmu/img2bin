@@ -140,9 +140,9 @@ while True:
 	if key == ord('n'):
 		index = 0
 
-	if index > 0:
-		for cur in range(0, index):
-			cv.line(imgCopy, Corners[cur], Corners[(cur + 1) % 4], (15, 63, 15), 3)
+	for cur in range(0, 4):
+		cv.line(imgCopy, Corners[cur], Corners[(cur + 1) % 4], (15, 63, 15), 2)
+	cv.line(imgCopy, Corners[index % 4], Corners[index % 4], (191, 63, 15), 3)
 	cv.imshow(WINDOW_NAME, imgCopy)
 
 	print("Point number = {}\nCorners = {}".format(index, Corners))
@@ -206,7 +206,7 @@ imgCopy = cv.resize(ConvertedImg, (4 * PixelPerRow, 4 * PixelPerCol), interpolat
 cv.imshow(DISPLAY_WINDOW_NAME, imgCopy)
 
 
-# To-do: add manual correction
+# Manual correction
 cv.destroyWindow(WINDOW_NAME)
 cv.namedWindow(DISPLAY_WINDOW_NAME, cv.WINDOW_AUTOSIZE)
 cv.imshow(DISPLAY_WINDOW_NAME, imgCopy)
@@ -225,13 +225,14 @@ while key != ord('y'):
 		key = cv.waitKey(100)
 
 	if IsCoordValid == True:
-		# To-do: flip pixel
 		ConvertedImg[int(MouseY / clipSize[1] * PixelPerCol), int(MouseX / clipSize[0] * PixelPerRow)] ^= 0xFF
 		blendImages(cv.getTrackbarPos("Transparency", PARAMETER_WINDOW_NAME))
-		IsCoordValid = False
+
+	IsCoordValid = False
+	key = -1
 
 
-# convert to binary data
+# Convert to binary data
 BinData = []
 for row in range(0, PixelPerCol):
 	for offset in range(0, PixelPerRow, 8):	# assume 1BPP
@@ -252,11 +253,11 @@ if SkipSave == False:
 
 # ----Test purpose only----
 #'''
-print("Press [ESC] to quit")
-while True:
-	key = cv.waitKey(100)
-	if key == 27:
-		break
+#print("Press [ESC] to quit")
+#while True:
+#	key = cv.waitKey(100)
+#	if key == 27:
+#		break
 #'''
 
 
