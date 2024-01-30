@@ -221,6 +221,7 @@ Click on pixels to flip it,
 """)
 key = -1
 while key != ord('y'):
+	key = -1
 	while (key == -1) and (IsCoordValid == False):
 		key = cv.waitKey(100)
 
@@ -229,7 +230,6 @@ while key != ord('y'):
 		blendImages(cv.getTrackbarPos("Transparency", PARAMETER_WINDOW_NAME))
 
 	IsCoordValid = False
-	key = -1
 
 
 # Convert to binary data
